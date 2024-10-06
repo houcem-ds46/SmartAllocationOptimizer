@@ -1,6 +1,6 @@
 # Project Allocation Optimization
 
-This repository solves an optimization problem using MILP techniques (Mixed Integer Linear Programming). It is designed to solve an allocation problem with Gurobi optimizer. The core of the solution is implemented in the `create_model` function, which utilizes the Gurobi optimization solver to allocate individuals to projects based on their preferences.
+This repository solves an optimization problem using MILP techniques (Mixed Integer Linear Programming). It is designed to solve an allocation problem with Gurobi optimizer. The core of the solution is implemented in the `create_model` function, which utilizes the Gurobi optimization solver to allocate individuals to projects based on their preferences. The solution aims to find the optimal people allocation to projects based on their preferences while respecting project capacity constraints
 
 ## Problem formulation and modelization 
 
@@ -15,7 +15,8 @@ We are provided with a classic example of a binary integer programming model in 
   $$\text{maximize} \quad \sum_{p} \left( x[p, \text{firstChoice(p)}] + 0.5 \times x[p, \text{secondChoice(p)}] \right)$$
 
   `firstChoice(p)` being the first choice project of the person `p` and `secondChoice(p)` being his/her second choice.
-  This function gives full weight to a person's first choice and half weight to their second choice, reflecting the relative importance of these preferences.
+
+  Notice that we are giving full weight to a person's first choice and half weight to their second choice, reflecting the relative importance of these preferences.
 
 ### Constraints:
 1. **Assignment Constraint**:
@@ -35,6 +36,24 @@ We are provided with a classic example of a binary integer programming model in 
    These constraints ensure that each project is neither under- nor over-subscribed.
 
 
+
+## Data Flow Diagram
+
+```plaintext
++----------------+         +----------------+         +------------------------+
+|                |         |                |         |                        |
+| get_input_data +-------> | create_model   +-------> | post_process_solution  |
+|                |         |                |         |                        |
++----------------+         +----------------+         +------------------------+
+```
+
+## Installation
+
+Before running the project, ensure that you have all the necessary dependencies installed. You can do this by installing the packages listed in the `requirements.txt` file. To install these dependencies, run the following command in your terminal:
+
+```sh
+pip install -r requirements.txt
+```
 
 
 # Script Overview
