@@ -3,6 +3,12 @@ import pandas as pd
 import gurobipy as gp
 from gurobipy import GRB
 import numpy as np
+pd.set_option('future.no_silent_downcasting', True)
+from os.path import join, dirname
+from dotenv import load_dotenv
+
+dotenv_path = join(dirname(__file__), '.env')
+load_dotenv(dotenv_path)
 
 def get_input_data():
     if os.environ.get("LOCAL_EXECUTION") == "False":
