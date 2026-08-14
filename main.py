@@ -4,6 +4,7 @@ from gurobipy import GRB
 import numpy as np
 
 def get_input_data():
+    # Read input 
     df_votes = (
             pd.DataFrame(
                 {
