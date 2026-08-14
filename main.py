@@ -1,32 +1,57 @@
+import os
 import pandas as pd 
 import gurobipy as gp
 from gurobipy import GRB
 import numpy as np
 
 def get_input_data():
-    # Read input 
-    df_votes = (
-            pd.DataFrame(
-                {
-                'person_id' : range(20),
-                'name' : ['Alice', 'Bob', 'Charlie', 'David', 'Eve', 'Frank', 'Grace', 'Henry', 'Ivy', 'Jack',
-                        'Kate', 'Liam', 'Mia', 'Noah', 'Olivia', 'Peter', 'Quinn', 'Rachel', 'Sam', 'Tina'],
-                'voted_project_first_choice': [0, 1, 2, 3, 4, 0, 1, 2, 3, 4,
-                    0, 1, 2, 3, 4, 0, 1, 2, 3, 4], 
-                'voted_project_second_choice': [1, 2, 3, 4, 0, 1, 2, 3, 4, 0,
-                    1, 2, 3, 4, 0, 1, 2, 3, 4, 0]}
-            )
-        )
+    if os.environ.get("LOCAL_EXECUTION") == "False":
+        
+        from google.colab import auth
+        import gspread
+        from google.auth import default
+        # Autenticating to google
+        auth.authenticate_user()
+        creds, _ = default()
+        gc = gspread.authorize(creds)
+        # Defining my worksheet
+        worksheet_votes = gc.open_by_key(os.environ.get("MY_GOOGLE_SHEET_ID")).worksheet('votes')
+        # Get_all_values gives a list of rows
+        rows = worksheet_votes.get_all_values()
+        # Convert to a DataFrame
+        df_votes = pd.DataFrame(rows[1:], columns=rows[0])
+
+        # Defining my worksheet
+        worksheet_projects = gc.open_by_key(os.environ.get("MY_GOOGLE_SHEET_ID")).worksheet('projects')
+        # Get_all_values gives a list of rows
+        rows = worksheet_projects.get_all_values()
+        # Convert to a DataFrame
+        df_projects = pd.DataFrame(rows[1:], columns=rows[0])
+    else:
+        df_votes = (
+                    pd.DataFrame(
+                        {
+                        'person_id' : range(20),
+                        'name' : ['Alice', 'Bob', 'Charlie', 'David', 'Eve', 'Frank', 'Grace', 'Henry', 'Ivy', 'Jack',
+                                'Kate', 'Liam', 'Mia', 'Noah', 'Olivia', 'Peter', 'Quinn', 'Rachel', 'Sam', 'Tina'],
+                        'voted_project_first_choice': [0, 1, 2, 3, 4, 0, 1, 2, 3, 4,
+                            0, 1, 2, 3, 4, 0, 1, 2, 3, 4], 
+                        'voted_project_second_choice': [1, 2, 3, 4, 0, 1, 2, 3, 4, 0,
+                            1, 2, 3, 4, 0, 1, 2, 3, 4, 0]}
+                    )
+                )
+
+        
+        # New dataframe for projects
+        df_projects = pd.DataFrame({
+            'project_id': range(5),
+            'min_people': [2, 2, 2, 2, 4],
+            'max_people': [4, 4, 4, 4, 4]
+        })
+        
+   
     print(df_votes)
-
-    # New dataframe for projects
-    df_projects = pd.DataFrame({
-        'project_id': range(5),
-        'min_people': [2, 2, 2, 2, 4],
-        'max_people': [4, 4, 4, 4, 4]
-    })
     print(df_projects)
-
     return df_votes, df_projects
 
 
