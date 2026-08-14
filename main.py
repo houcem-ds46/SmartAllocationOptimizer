@@ -163,7 +163,7 @@ def post_process_solution(df_votes, df_projects, solution):
     nb_of_people = len(df_votes)
     
     # Update df_votes with the solution
-    df_votes = (
+    df_votes_enriched = (
         df_votes.copy()
         .assign(allocated_to_project_id=solution)
         .assign(is_allocated_project_in_choices=lambda x: x.apply(lambda row: row['allocated_to_project_id'] in [row['voted_project_first_choice'], row['voted_project_second_choice']], axis=1))
@@ -171,12 +171,12 @@ def post_process_solution(df_votes, df_projects, solution):
         .assign(got_his_her_second_choice=lambda x: x.apply(lambda row: row['allocated_to_project_id'] in [row['voted_project_second_choice']], axis=1))
     )
     print("\n")
-    print(df_votes)
+    print(df_votes_enriched)
 
     df_project_allocation = (
         df_projects.copy()
         .merge(
-            df_votes.groupby('allocated_to_project_id')['name'].apply(list).reset_index(name='members'), 
+            df_votes_enriched.groupby('allocated_to_project_id')['name'].apply(list).reset_index(name='members'), 
             left_on='project_id', 
             right_on='allocated_to_project_id', 
             how='left'
@@ -188,14 +188,16 @@ def post_process_solution(df_votes, df_projects, solution):
     print(df_project_allocation)
 
     print("Results summary:")
-    print(f'\t-{int(df_votes["is_allocated_project_in_choices"].sum()*100/nb_of_people)} % of people are satisfied ')
-    print(f'\t\t-{int(df_votes["got_his_her_first_choice"].sum()*100/nb_of_people)} % of people got his/her first choice')
-    print(f'\t\t-{int(df_votes["got_his_her_second_choice"].sum()*100/nb_of_people)} % of people got his/her second choice')
-    print(f'\t-Percentage of people who arent allocated to a project is {int(df_votes["allocated_to_project_id"].isna().sum()*100/nb_of_people)} %')
+    print(f'\t-{int(df_votes_enriched["is_allocated_project_in_choices"].sum()*100/nb_of_people)} % of people are satisfied ')
+    print(f'\t\t-{int(df_votes_enriched["got_his_her_first_choice"].sum()*100/nb_of_people)} % of people got his/her first choice')
+    print(f'\t\t-{int(df_votes_enriched["got_his_her_second_choice"].sum()*100/nb_of_people)} % of people got his/her second choice')
+    print(f'\t-Percentage of people who arent allocated to a project is {int(df_votes_enriched["allocated_to_project_id"].isna().sum()*100/nb_of_people)} %')
+
+    return df_votes_enriched, df_project_allocation
 
 if __name__ == "__main__":
     df_votes, df_projects = get_input_data()
     solution = create_model(df_votes, df_projects)
     if solution is not None:
-        post_process_solution(df_votes, df_projects, solution)
+        df_votes_enriched, df_project_allocation = post_process_solution(df_votes, df_projects, solution)
 
