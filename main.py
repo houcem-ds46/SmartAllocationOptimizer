@@ -33,6 +33,15 @@ def get_input_data():
         rows = worksheet_projects.get_all_values()
         # Convert to a DataFrame
         df_projects = pd.DataFrame(rows[1:], columns=rows[0])
+
+        # Convert project choice columns to integer type
+        df_votes['voted_project_first_choice'] = df_votes['voted_project_first_choice'].astype(int)
+        df_votes['voted_project_second_choice'] = df_votes['voted_project_second_choice'].astype(int)
+        df_votes['person_id'] = df_votes['person_id'].astype(int)
+
+        df_projects["min_people"] = df_projects["min_people"].astype(int)
+        df_projects["max_people"] = df_projects["max_people"].astype(int)
+        df_projects["project_id"] = df_projects["project_id"].astype(int)
     else:
         df_votes = (
                     pd.DataFrame(
