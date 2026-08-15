@@ -1,52 +1,320 @@
-# Project Allocation Optimization
+# 1. Introduction to business problem 
 
-This repository solves an optimization problem using MILP techniques (Mixed Integer Linear Programming). It is designed to solve an allocation problem with Gurobi optimizer. The core of the solution is implemented in the `create_model` function, which utilizes the Gurobi optimization solver to allocate individuals to projects based on their preferences. The solution aims to find the optimal people allocation to projects based on their preferences while respecting project capacity constraints
-
-## Problem formulation and modelization 
-
-We are provided with a classic example of a binary integer programming model in operations research. It aims to maximize overall satisfaction while adhering to project capacity constraints.
-
-### Decision Variables:
-- **x[p, c]**: A binary decision variable where `x[p, c] = 1` if person `p` is assigned to project `c`, and `0` otherwise. These variables are used to determine the allocation of each person to a project.
-
-### Objective Function:
-- The objective function is to maximize the total satisfaction derived from the project allocations. It is formulated as:
-
-  $$\text{maximize} \quad \sum_{p} \left( x[p, \text{firstChoice(p)}] + 0.5 \times x[p, \text{secondChoice(p)}] \right)$$
-
-  `firstChoice(p)` being the first choice project of the person `p` and `secondChoice(p)` being his/her second choice.
-
-  Notice that we are giving full weight to a person's first choice and half weight to their second choice, reflecting the relative importance of these preferences.
-
-### Constraints:
-1. **Assignment Constraint**:
-   - Each person can be assigned to at most one project:
-
-     $$\sum_{c} x[p, c] \leq 1, \quad \forall p$$
-
-   This ensures that no person is allocated to more than one project.
-
-2. **Project Capacity Constraints**:
-   - Each project must have a number of people between its specified minimum and maximum limits:
-
-     $$\sum_{p} x[p, c] \geq \text{minimumPeople}(c), \quad \forall c$$
-
-     $$\sum_{p} x[p, c] \leq \text{maximumPeople}(c), \quad \forall c$$
-
-   These constraints ensure that each project is neither under- nor over-subscribed.
+This project provides an intelligent decision-support system to allocate individuals to projects based on their preferences, their seniority, and strict business constraints (budget and project capacity). It features two distinct algorithmic approaches to solve the allocation problem: a fast heuristic (Greedy Algorithm) and an exact mathematical solver (Mixed-Integer Linear Programming via Gurobi).
 
 
+# 2. The Greedy Algorithm (Baseline)
+Motivation:
+Before deploying complex solvers, it is best practice to establish a baseline. The greedy algorithm simulates the manual logic a human planner might use. It is fast, easy to interpret, and prioritizes "VIPs" (individuals with the highest seniority) first.
 
-## Data Flow Diagram
+Pseudo-Code Approach:
+The algorithm operates in two phases:
 
-```plaintext
-+----------------+         +----------------+         +------------------------+
-|                |         |                |         |                        |
-| get_input_data +-------> | create_model   +-------> | post_process_solution  |
-|                |         |                |         |                        |
-+----------------+         +----------------+         +------------------------+
+- VIP First: Iterate through seniority levels from highest to lowest. For each person at the current seniority, attempt to assign them to their 1st choice. If full or over budget, try the 2nd choice.
+
+- Filling the Gaps: Once the budget is exhausted or all VIPs are served, look at the projects that are already "opened" (allocated to at least one person). Fill the remaining seats up to the maximum capacity with unassigned people, prioritizing those who voted for the project.
+
+```Plaintext
+Initialize available_budget = MAX_BUDGET
+Sort people by seniority (Descending)
+
+// Phase 1
+FOR EACH person IN people:
+    IF 1st_choice_project has capacity AND cost <= available_budget:
+        Assign person to 1st_choice
+        Deduct cost from available_budget
+    ELSE IF 2nd_choice_project has capacity AND cost <= available_budget:
+        Assign person to 2nd_choice
+        Deduct cost from available_budget
+
+// Phase 2
+FOR EACH opened_project:
+    WHILE opened_project has empty seats AND unassigned people exist:
+        Find unassigned person with highest combined score (vote + seniority)
+        Assign to opened_project
 ```
+# 3. The Mathematical Optimization model (Gurobi)
 
+## Motivation 
+
+Heuristics often get stuck in local optima (e.g., filling a sub-optimal project early on and lacking the budget to open a better one later). To find the mathematically proven best allocation, we model this as a Mixed-Integer Linear Programming (MILP) problem using Gurobi. It ensures a global view of all constraints simultaneously. We aim to find the optimal way to assign people to projects while : 
+
+* Maximizing weighted satisfaction based on project preferences and seniority
+* Respecting project capacity limits
+* Staying within a defined project budget when possible (soft constraint allowing 5% overbudget excess). Allowing a controlled budget overrun with a penalty
+
+## Sets and Parameters
+
+* `P`: Set of all people
+* `C`: Set of all projects
+* `S[p, c]`: Weighted satisfaction score of assigning person `p` to project `c`
+
+  * For a first-choice project: `S[p, c] = Seniority[p] × 1`
+  * For a second-choice project: `S[p, c] = Seniority[p] × 0.5`
+* `Cost[c]`: Financial cost of activating project `c`
+* `Min[c]`: Minimum number of people required for project `c`
+* `Max[c]`: Maximum number of people allowed for project `c`
+* `B`: Total project budget
+* `λ`: Penalty weight applied to budget overruns
+
+## Decision Variables
+
+* `x[p, c] ∈ {0, 1}`: Binary assignment variable
+
+  * `x[p, c] = 1` if person `p` is assigned to project `c`
+  * `x[p, c] = 0` otherwise
+* `y[c] ∈ {0, 1}`: Binary project activation variable
+
+  * `y[c] = 1` if project `c` is activated
+  * `y[c] = 0` otherwise
+* `o ≥ 0`: Continuous variable representing the amount by which the total project cost exceeds the budget
+
+## Objective Function
+
+The model maximizes total weighted satisfaction while penalizing any budget overrun:
+
+
+$$ \max \quad \sum_{p \in P} \sum_{c \in C} S[p, c] \cdot x[p, c] - \lambda \cdot o $$
+
+The first term rewards assignments that provide higher satisfaction. The second term penalizes solutions that exceed the available budget.
+
+## Constraints
+
+### 1. Assignment Constraint
+
+Each person can be assigned to at most one project:
+
+$$
+\sum_{c \in C} x[p, c] \leq 1,
+\quad \forall p \in P
+$$
+
+
+### 2. Project Activation definition 
+
+A project can only have assigned people if it is activated.
+
+Using a Big-M constraint, where:
+
+$$
+BigM = \text{Size}[P] + 1
+$$
+
+the constraint is:
+
+$$
+\sum_{p \in P} x[p, c]
+\leq
+BigM \cdot y[c],
+\quad \forall c \in C
+$$
+
+`y[c] = 1` only and only if project c is activated.
+
+### 3. Minimum and Maximum Project Capacity
+
+Each activated project must have between its minimum and maximum number of assigned people:
+
+$$
+\text{Min}[c] \cdot y[c]
+\leq
+\sum_{p \in P} x[p, c]
+\leq
+\text{Max}[c] \cdot y[c],
+\quad \forall c \in C
+$$
+
+This constraint garantees that if project c is being used  `y[c] = 1`, then we make sure that min and max capacity are respected
+
+
+### 4. Budget Constraint definition 
+
+The total cost of activated projects must not exceed the budget plus the allowed overrun:
+
+$$
+\sum_{c \in C}
+\text{Cost}[c] \cdot y[c]
+\leq
+B + o
+$$
+
+The variable `o` represents the amount by which the project budget is exceeded. (this soft contraint is optional, the user can decide if he/she wants to respect the max budget by changing a global variable) 
+
+If the total project cost is within the budget, `o` can be `0`.
+
+If the total project cost exceeds the budget, `o` must increase accordingly.
+
+### 5. Maximum Authorized Budget Overrun
+
+The budget overrun is limited to 5% of the total budget:
+
+$$
+o \leq 0.05 \cdot B
+$$
+
+This prevents the optimization model from exceeding the budget by more than 5%.
+
+The `5%` value can be changed depending on the business requirement.
+
+## Complete MILP Formulation
+
+### Sets and Parameters
+
+$$
+P = \text{set of people}
+$$
+
+$$
+C = \text{set of projects}
+$$
+
+$$
+S[p, c] = \text{weighted satisfaction score}
+$$
+
+$$
+\text{Cost}[c] = \text{cost of activating project } c
+$$
+
+$$
+\text{Min}[c] = \text{minimum project capacity}
+$$
+
+$$
+\text{Max}[c] = \text{maximum project capacity}
+$$
+
+$$
+B = \text{total project budget}
+$$
+
+$$
+\lambda = \text{budget overrun penalty weight}
+$$
+
+### Decision Variables
+
+$$
+x[p, c] \in {0,1},
+\quad \forall p \in P,\ c \in C
+$$
+
+$$
+y[c] \in {0,1},
+\quad \forall c \in C
+$$
+
+$$
+o \geq 0
+$$
+
+### Objective
+
+$$ \max \quad \sum_{p \in P} \sum_{c \in C} S[p, c] \cdot x[p, c] - \lambda \cdot o $$
+
+### Constraints
+
+**At most one project per person:**
+
+$$
+\sum_{c \in C} x[p, c] \leq 1,
+\quad \forall p \in P
+$$
+
+**Project activation:**
+
+$$
+\sum_{p \in P} x[p, c]
+\leq
+\text{BigM} \cdot y[c],
+\quad \forall c \in C
+$$
+
+**Project capacity:**
+
+$$
+\text{Min}[c] \cdot y[c]
+\leq
+\sum_{p \in P} x[p, c]
+\leq
+\text{Max}[c] \cdot y[c],
+\quad \forall c \in C
+$$
+
+**Budget with soft overrun:**
+
+$$
+\sum_{c \in C}
+\text{Cost}[c] \cdot y[c]
+\leq
+B + o
+$$
+
+**Maximum authorized overrun:**
+
+$$
+o \leq 0.05 \cdot B
+$$
+
+## Interpretation
+
+The model tries to assign people to projects to maximize weighted satisfaction while respecting project capacities and controlling the total project budget. It makes a trade-off between **people's preferences**, **project capacity**, and **budget**.
+
+A project is activated only when people are assigned to it. Once activated, it must satisfy its minimum and maximum capacity.
+
+Assignments are rewarded according to the satisfaction score `S[p, c]`. This custom score is based on seniority and project preference, assigning a senior person to their preferred project receives a higher objective contribution.
+
+When soft budget constraint is activated, the model can exceed the budget by up to 5%, but doing so reduces the objective value through the penalty term: Therefore, the optimizer will only use the allowed budget overrun when the additional satisfaction gained from activating projects justifies its penalty.
+
+
+
+# Code architecture 
+
+Global ArchitectureThe pipeline is entirely orchestrated by the launch_process() function, ensuring a clean flow from data ingestion to evaluation and visualization.get_input_data: Ingests data from either local CSV files or directly from Google Sheets via API (managing individuals' votes/seniority and projects' capacities/costs).perform_sanity_checks: A robust validation layer ensuring data integrity (e.g., verifying unique IDs, checking that maximum capacity $\ge$ minimum capacity, and ensuring no missing cross-references).Algorithmic Engines:greedy_allocation: Runs the baseline heuristic.create_model: Formulates and runs the MILP optimization model.post_process_solution: Merges the algorithmic outputs with the initial data to generate human-readable allocations and calculates business KPIs (satisfaction scores, budget utilization, allocation rates).display_allocation_results_graph & display_kpi_compraison: Generates interactive Plotly visualizations (slope graphs and comparative bar charts) to help stakeholders understand the trade-offs.
+
+- get_input_data: Ingests data from either local CSV files or directly from Google Sheets via API (managing individuals' votes/seniority and projects' capacities/costs).
+
+- perform_sanity_checks: A robust validation layer ensuring data integrity (e.g., verifying unique IDs, checking that maximum capacity $\ge$ minimum capacity, and ensuring no missing cross-references).
+
+- Algorithmic Engines:
+- - greedy_allocation: Runs the baseline heuristic
+- - create_model: Formulates and runs the MILP optimization model.
+
+- post_process_solution: Merges the algorithmic outputs with the initial data to generate human-readable allocations and calculates business KPIs (satisfaction scores, budget utilization, allocation rates).
+
+- display_allocation_results_graph & display_kpi_compraison: Generates interactive Plotly visualizations (slope graphs and comparative bar charts) to help stakeholders understand the trade-offs.
+
+Below is a global schema describing the architecture : 
+
+```
+[votes.csv]    [projects.csv]
+       |               |
+       v               v
++--------------------------+      +-------------------------+      +---------------------+
+| Read inputs              | ---> | Sanity checks           | ---> | Allocation engine   |
+| (get_input_data)         |      | (perform_sanity_checks) |      |  - greedy()         |
++--------------------------+      +-------------------------+      |  - solve_milp()     |
+                                                                   +---------+-----------+
+                                                                             |
+                                                                             v
+                                                                   +-------------------------+ 
+                                                                   | Post-process / KPI      |
+                                                                   | (post_process_solution) |
+                                                                   +---------+---------------+
+                                                                             |
+                                                                             v
+                                                                   +-------------------------+ 
+                                                                   | Display & Export        |
+                                                                   | (display_allocation...  |
+                                                                   | & df.to_csv)            |
+                                                                   +---------+---------------+
+                                                                             |
+                                                                             v
+                                                                 [output_votes.csv]
+                                                                 [output_projects.csv]
+                                                                 [df_kpi_cont.csv]
+
+```
 ## Installation
 
 Before running the project, ensure that you have all the necessary dependencies installed. You can do this by installing the packages listed in the `requirements.txt` file. To install these dependencies, run the following command in your terminal:
@@ -54,34 +322,6 @@ Before running the project, ensure that you have all the necessary dependencies 
 ```sh
 pip install -r requirements.txt
 ```
-
-
-# Script Overview
-
-Here's a summary of what each part of the code does:
-
-1. **Data Preparation (`get_input_data` function):**
-   - Creates a DataFrame `df_votes` containing information about 20 people, including their IDs, names, and their first and second project choices.
-   - Creates a DataFrame `df_projects` with details about 5 projects, specifying the minimum and maximum number of people that can be assigned to each project.
-   - Prints both DataFrames and returns them for further processing.
-
-2. **Model Creation and Optimization (`create_model` function):**
-   - Initializes a Gurobi optimization model to allocate people to projects.
-   - Defines binary decision variables `x` to represent whether a person is assigned to a project.
-   - Sets an objective function to maximize the satisfaction of people's project choices, giving full weight to first choices and half weight to second choices.
-   - Adds constraints to ensure each person is assigned to at most one project and that each project has a number of people within its specified limits.
-   - Optimizes the model and checks the status of the solution, handling cases of optimality, infeasibility, and unboundedness.
-   - If an optimal solution is found, it extracts the solution and prints the number of people allocated to each project.
-
-3. **Solution Post-Processing (`post_process_solution` function):**
-   - Updates the `df_votes` DataFrame with the allocation results, indicating whether each person got their first or second choice.
-   - Merges the allocation results with `df_projects` to show which members are assigned to each project and counts the number of members per project.
-   - Prints a summary of the results, including the percentage of people satisfied with their allocation and those who got their first or second choice.
-
-4. **Execution (`__main__` block):**
-   - Calls the functions in sequence to get input data, create and solve the model, and post-process the solution if one is found.
-
-Overall, the script uses optimization to allocate people to projects based on their preferences while respecting project capacity constraints.
 
 ## Usage
 
