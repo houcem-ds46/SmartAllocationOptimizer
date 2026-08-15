@@ -7,6 +7,9 @@ pd.set_option('future.no_silent_downcasting', True)
 from os.path import join, dirname
 from dotenv import load_dotenv
 
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+
 dotenv_path = join(dirname(__file__), '.env')
 load_dotenv(dotenv_path)
 
@@ -51,31 +54,92 @@ def get_input_data():
         if "include" in df_projects.columns:
             df_projects = df_projects[df_projects["include"]==1].copy()
 
-        # (
-        #             pd.DataFrame(
-        #                 {
-        #                 'person_id' : range(21),
-        #                 'name' : ['Alice', 'Bob', 'Charlie', 'David', 'Eve', 'Frank', 'Grace', 'Henry', 'Ivy', 'Jack',
-        #                         'Kate', 'Liam', 'Mia', 'Noah', 'Olivia', 'Peter', 'Quinn', 'Rachel', 'Sam', 'Tina', 'Lolo'],
-        #                 'voted_project_first_choice': [0, 1, 2, 3, 4, 0, 1, 2, 3, 4,
-        #                     0, 1, 2, 3, 4, 0, 1, 2, 3, 4, 0], 
-        #                 'voted_project_second_choice': [1, 2, 3, 4, 0, 1, 2, 3, 4, 0,
-        #                     1, 2, 3, 4, 0, 1, 2, 3, 4, 0, 1]}
-        #             )
-        #         )
-
         
-        # # New dataframe for projects
-        # df_projects = pd.DataFrame({
-        #     'project_id': range(5),
-        #     'min_people': [2, 2, 2, 2, 4],
-        #     'max_people': [4, 4, 4, 4, 4]
-        # })
         
    
     print(df_votes)
     print(df_projects)
     return df_votes, df_projects
+
+
+def perform_sanity_checks(df_votes, df_projects):
+    """
+    Perform sanity checks on the input dataframes to ensure they meet the expected format and constraints."""
+
+    #### Specific checks votes dataframe     
+    # Check for duplicate person_id in df_votes
+    if df_votes['person_id'].duplicated().any():
+        raise ValueError("Duplicate person_id found in df_votes.")
+    # check that person_id is increasing from 0 to n-1
+    if not (df_votes['person_id'].min() == 0 and df_votes['person_id'].max() == len(df_votes) - 1):
+        raise ValueError("person_id should be increasing from 0 to n-1 without gaps.")
+
+    # Make sure that "name" column is not empty and is a string
+    if df_votes['name'].isnull().any() or not df_votes['name'].apply(lambda x: isinstance(x, str)).all():
+        raise ValueError("The 'name' column in df_votes should not be empty and should contain only strings.")
+
+    # Make sure that voted_project_first_choice and voted_project_second_choice are integers
+    if not df_votes['voted_project_first_choice'].apply(lambda x: isinstance(x, int)).all():
+        raise ValueError("The 'voted_project_first_choice' column in df_votes should contain only integers.")
+
+    if not df_votes['voted_project_second_choice'].apply(lambda x: isinstance(x, int)).all():
+        raise ValueError("The 'voted_project_second_choice' column in df_votes should contain only integers.")
+
+    # Make sure that person_seniority is a positive integer
+    if not df_votes['person_seniority'].apply(lambda x: isinstance(x, int) and x >= 0).all():
+        raise ValueError("The 'person_seniority' column in df_votes should contain only non-negative integers.")
+
+    # Make sure that "include" column is either 0 or 1 if it exists in df_votes and df_projects
+    if "include" in df_votes.columns:
+        if not df_votes['include'].isin([0, 1]).all():
+            raise ValueError("The 'include' column in df_votes should only contain 0 or 1.")
+
+
+
+    ######### Specific checks projects dataframe
+
+    # Check for duplicate project_id in df_projects
+    if df_projects['project_id'].duplicated().any():
+        raise ValueError("Duplicate project_id found in df_projects.")
+    
+    # check that project_id is increasing from 0 to m-1
+    if not (df_projects['project_id'].min() == 0 and df_projects['project_id'].max() == len(df_projects) - 1):
+        raise ValueError("project_id should be increasing from 0 to m-1 without gaps.")
+
+    # make sure "project_name" is a non empty string 	
+    if df_projects['project_name'].isnull().any() or not df_projects['project_name'].apply(lambda x: isinstance(x, str)).all():
+        raise ValueError("The 'project_name' column in df_projects should not be empty and should contain only strings.")
+
+    # Make sure that max_people is a positive integer 
+    if not df_projects['max_people'].apply(lambda x: isinstance(x, int) and x >= 0).all():
+        raise ValueError("The 'max_people' column in df_projects should contain only non-negative integers.")
+
+    # Make sure that max_people is greater than or equal to min_people
+    if not (df_projects['max_people'] >= df_projects['min_people']).all():
+        raise ValueError("The 'max_people' column in df_projects should be greater than or equal to the 'min_people' column.")
+
+    # Make sure that min_people is a positive integer 
+    if not df_projects['min_people'].apply(lambda x: isinstance(x, int) and x >= 0).all():
+        raise ValueError("The 'min_people' column in df_projects should contain only non-negative integers.")
+
+    # Make sure that project_cost is a positive integer
+    if not df_projects['project_cost'].apply(lambda x: isinstance(x, int) and x >= 0).all():
+        raise ValueError("The 'project_cost' column in df_projects should contain only non-negative integers.")
+
+    if "include" in df_projects.columns:
+        if not df_projects['include'].isin([0, 1]).all():
+            raise ValueError("The 'include' column in df_projects should only contain 0 or 1.")
+
+
+    
+    # Functionnal integration check : Check that all voted projects exist in df_projects
+    all_voted_projects = pd.concat([df_votes['voted_project_first_choice'], df_votes['voted_project_second_choice']]).unique()
+    missing_projects = set(all_voted_projects) - set(df_projects['project_id'])
+    if missing_projects:
+        raise ValueError(f"The following voted projects are voted but are missing in df_projects: {missing_projects}")
+
+
+
 
 def greedy_allocation(df_votes, df_projects):
     """
@@ -86,37 +150,40 @@ def greedy_allocation(df_votes, df_projects):
     until the budget is exhausted or all people are served.
     """
     timer_start = pd.Timestamp.now()
+
     # Initialize an empty allocation dictionary
     nb_of_people = len(df_votes)
     greedy_allocation_list = [np.nan] * nb_of_people
     used_budget = 0
-    served_seniority_score = df_votes['person_seniority'].max()
-    served_person_id = []
-    used_projects = []
+    served_seniority_score = df_votes['person_seniority'].max() # Start with the highest seniority level (VIPs)
+    served_person_id = [] # Stores the list of people that have been allocated to a project
+    used_projects = [] # Stores the list of projects that have been allocated to at least one person
 
-    # Create a copy of the projects DataFrame to track remaining capacity
+    # Create a copy of the projects DataFrame with project_id as the index for easier access 
     projects = df_projects.set_index('project_id').copy()
 
-    # greedy allocation loop
+    # Phase 1: “VIP first” : greedy allocation loop
+    print("---------Start of VIP first round of allocation---------")
     while used_budget < int(os.getenv("PROJECT_BUDGET")) and served_seniority_score >= 0 and len(served_person_id) < nb_of_people:
+        print("Trying serving seniority : {0}".format(served_seniority_score))
         for _, row in df_votes.iterrows():
             person_id = row['person_id']
             first_choice = row['voted_project_first_choice']
             second_choice = row['voted_project_second_choice']
             person_seniority = row['person_seniority']
             if person_id not in served_person_id and person_seniority == served_seniority_score:
-                print("...serving person_id with seniority ", person_id, person_seniority)
+                print("...trying serving person_id {0} with seniority {1}".format(person_id, person_seniority))
                 # Get the costs beforehand
                 first_cost = projects.loc[first_choice, 'project_cost']
                 second_cost = projects.loc[second_choice, 'project_cost']
-                # Try to allocate the person to their first choice if there's capacity
+                # Try to allocate the person to their first choice if there's capacity and budget allows
                 if greedy_allocation_list.count(first_choice) < projects.loc[first_choice, 'max_people'] and (used_budget + first_cost) <= int(os.getenv("PROJECT_BUDGET")) :
                     greedy_allocation_list[person_id] = first_choice
                     served_person_id.append(person_id)
                     used_budget += first_cost
                     if first_choice not in used_projects:
                         used_projects.append(first_choice)
-                    print("person_id ", person_id, " allocated to first_choice ", first_choice, " used_budget: ", used_budget)
+                    print("....GOOD NEWS : person_id {0} allocated to first_choice {1}, used_budget: {2}".format(person_id, first_choice, used_budget))
                 # If not, try to allocate them to their second choice
                 elif greedy_allocation_list.count(second_choice) < projects.loc[second_choice, 'max_people'] and (used_budget + second_cost) <= int(os.getenv("PROJECT_BUDGET")):
                     greedy_allocation_list[person_id] = second_choice
@@ -124,24 +191,30 @@ def greedy_allocation(df_votes, df_projects):
                     used_budget += second_cost
                     if second_choice not in used_projects:
                         used_projects.append(second_choice)
-                    print("person_id ", person_id, " allocated to second_choice ", second_choice, " used_budget: ", used_budget)
+                    print("....GOOD NEWS : person_id {0} allocated to second_choice {1}, used_budget: {2}".format(person_id, second_choice, used_budget))
 
                 
         # Decrease the served seniority score for the next iteration
         served_seniority_score -= 1
+        print("served_seniority_score is decreased to: {0}".format(served_seniority_score))
 
 
+    print("---------End of VIP first round of allocation---------")
     print("used_budget: ", used_budget)
     assert used_budget <= int(os.getenv("PROJECT_BUDGET")), "Budget exceeded in greedy allocation"
     print("used_projects: ", used_projects)
-    print("len(served_person_id)    : ", len(served_person_id))
-    # After the budget is exhausted and people with the highest seniority have been served, we can try to allocate remaining people to projects that are not yet at their maximum capacity, even if they didn't vote for them.
+    print("Number of served_person_id: ", len(served_person_id))
+
+    # Phase 2: “Filling the gaps”
+    # After the budget is exhausted and people with the highest seniority have been served, 
+    # we can try to allocate remaining people to projects that are not yet at their maximum capacity, even if they didn't vote for them.
+    print("---------Start of Filling the gaps phase---------")
     for project_id in set(used_projects):
         allocated_count = greedy_allocation_list.count(project_id)
         print("project_id ", project_id, " allocated_count ", allocated_count)
         #min_people = projects.loc[project_id, 'min_people']
         max_people = projects.loc[project_id, 'max_people']
-        while allocated_count <= max_people and  len(served_person_id) < nb_of_people:
+        while allocated_count < max_people and  len(served_person_id) < nb_of_people:
             # Select a random person from the unallocated people having the most seniority to allocate to this project :
             unallocated_people = [p for p in range(nb_of_people) if greedy_allocation_list[p] is np.nan and p not in served_person_id]
             df_votes_unallocated = df_votes[df_votes['person_id'].isin(unallocated_people)]
@@ -165,6 +238,7 @@ def greedy_allocation(df_votes, df_projects):
                 break  # Break after allocating one person to this project
         timer_end = pd.Timestamp.now()
         greedy_duration = (timer_end - timer_start).total_seconds()
+    print("---------End of Filling the gaps phase---------")
     return greedy_allocation_list, greedy_duration
 
 
@@ -191,7 +265,7 @@ def create_model(df_votes, df_projects):
         var_project_c_is_used[c] = model.addVar(vtype=GRB.BINARY, name=f'var_P_is_allocated_{c}')
 
     # Definition of variable var_project_c_is_used : it indicates if project c was used
-    big_M = nb_of_people * 10   # A large number to ensure the constraint is effective
+    big_M = nb_of_people + 1   # A large enough number to ensure the constraint is effective
     for c in range(num_projects):
         model.addConstr(
             gp.quicksum( x[p, c] for p in range(nb_of_people))
@@ -199,7 +273,7 @@ def create_model(df_votes, df_projects):
             , name=f"definition_of_project_is_being_used_{c}"
         )
 
-    # Add constraints to ensure each person is assigned to exactly one project
+    # Add constraints to ensure each person is assigned to 0 or 1 project
     for _, row in df_votes.iterrows():
         person_id = row['person_id']
         model.addConstr(
@@ -227,7 +301,7 @@ def create_model(df_votes, df_projects):
             name=f"max_people_project_{c}"
         )
 
-        # Set objective function    
+    # Set objective function    
     person_seniority = df_votes.set_index('person_id')['person_seniority'].to_dict()
     objective_weighted_satisfaction_score = gp.quicksum(
             person_seniority[p] * (x[p, c1] + 0.5 * x[p, c2]) 
@@ -275,11 +349,6 @@ def create_model(df_votes, df_projects):
         # 4. Tu modifies ta fonction objectif pour pénaliser le dépassement
         obj = objective_weighted_satisfaction_score - (lambda_val * overrun)
         model.setObjective(obj, GRB.MAXIMIZE)
-    
-
-
-
-
     
     # Model optimize
     model.optimize()
@@ -392,9 +461,7 @@ def post_process_solution(df_votes, df_projects, solution, solution_type, soluti
 
 
 def display_allocation_results_graph(df_votes, df_projects, df_kpi, solution_type):
-    import pandas as pd
-    import numpy as np
-    import plotly.graph_objects as go
+
 
     # Filtrer les KPIs pour le type de solution demandé
     df_kpi_filtered = df_kpi[df_kpi["SOLUTION_TYPE"] == solution_type]
@@ -504,7 +571,7 @@ def display_allocation_results_graph(df_votes, df_projects, df_kpi, solution_typ
     # 7. Mise en forme finale pour l'esthétique du slope graph
     # On ajoute une marge à droite (r=250) pour avoir la place d'afficher les KPIs
     fig.update_layout(
-        title=dict(text=f'<b>Allocation des collab aux projets avec la solution {solution_type}</b>', font=dict(size=20), x=0.5),
+        title=dict(text=f'<b>Allocation des collaborateurs aux projets avec la solution {solution_type} (en vert l\'allocation au 1ier choix, en orange l\'allocation au 2ème choix, en gris les autres)</b>', font=dict(size=20), x=0.5),
         xaxis=dict(showgrid=False, zeroline=False, showticklabels=False, range=[-0.5, 1.8]), # On étend un peu le range X
         yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
         plot_bgcolor='white',
@@ -531,8 +598,7 @@ def display_allocation_results_graph(df_votes, df_projects, df_kpi, solution_typ
 
 
 def display_kpi_compraison(df_kpi):
-    import plotly.graph_objects as go
-    from plotly.subplots import make_subplots
+
 
     # --- 1. Extraire les données pour le Graphique 1 (Satisfaction) ---
     kpi_name_1 = 'weighted_satisfaction_score'
@@ -677,9 +743,10 @@ def display_kpi_compraison(df_kpi):
     # Afficher la figure
     fig.show()
 
-    
-if __name__ == "__main__":
+
+def launch_process():
     df_votes, df_projects = get_input_data()
+    perform_sanity_checks(df_votes, df_projects)
 
 
     ######### GREEDY SOLUTION
@@ -708,3 +775,7 @@ if __name__ == "__main__":
     
     df_kpi_cont.to_csv(os.getenv("OUTPUT_KPI_CSV_PATH"), index=False)
     print(df_kpi_cont)
+    
+    
+if __name__ == "__main__":
+    launch_process()
