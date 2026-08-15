@@ -14,8 +14,9 @@ In a fraction of a second, you get a perfect allocation plan, a budget impact re
 
 
 # 2. The Greedy Algorithm (Baseline)
+
 Motivation:
-Before deploying complex solvers, it is best practice to establish a baseline. The greedy algorithm simulates the manual logic a human planner might use. It is fast, easy to interpret, and prioritizes "VIPs" (individuals with the highest seniority) first.
+Before deploying complex solvers, you decide to set a baseline based on your company's existing common logic. You know that you need to keep retention high among senior experts. So you need to avoid frustrating them by not giving them their  top choices, so you decide to prioritize "VIPs" (the most senior staff) first, then fill the gaps.
 
 Pseudo-Code Approach:
 The algorithm operates in two phases:
