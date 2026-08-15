@@ -1,4 +1,4 @@
-# 1. The business problem :  The Friday Afternoon Headach
+# 1. The business problem :  The friday afternoon headache
 
 You are an Operations Manager. It’s Friday afternoon, and the quarterly project kick-off is on Monday. You have dozens of employees to assign to a list of new R&D projects.
 
