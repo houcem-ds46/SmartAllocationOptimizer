@@ -266,9 +266,34 @@ Assignments are rewarded according to the satisfaction score `S[p, c]`. This cus
 
 When soft budget constraint is activated, the model can exceed the budget by up to 5%, but doing so reduces the objective value through the penalty term: Therefore, the optimizer will only use the allowed budget overrun when the additional satisfaction gained from activating projects justifies its penalty.
 
+# 4.Comparing Approaches: Greedy vs. Optim
+
+To objectively evaluate the performance of our allocation engine, we benchmarked the baseline heuristic (Greedy algorithm) against the exact mathematical solver (MILP Optimization). Here is the detailed breakdown of the key performance indicators:
+
+| Metric | Greedy (Baseline) | Optim (MILP) | Gain / Impact |
+|---|---:|---:|---:|
+| Execution Time | 80 ms | 141 ms | +76% time (Trade-off) |
+| Number of allocated projects | 5 | 5 | Cost differs |
+| Total Project Cost | $47,500 | $52,500 | +10.5% cost (Trade-off) |
+| Number of people allocated to their 1st Choice | 10 | 21 | +110% |
+| Number of people allocated to their 2nd Choice | 10 | 3 | -70% (Trade-off) |
+| Weighted Satisfaction Score | 78 | 117.5 | +51% |
 
 
-# Code architecture 
+While the Greedy approach offers a slightly faster execution time and a lower immediate budget footprint, the Optimization algorithm provides a massively superior ROI in terms of overall employee satisfaction. By taking a global view of all constraints rather than making sequential, localized decisions, the MILP solver drastically increases the number of people getting their top preferences. 
+Ultimately, for a marginal budget increase of $5,000, the Optimization model more than doubles the number of employees assigned to their absolute first choice. 
+This proves the immense business value of shifting from naive heuristics to Operations Research: you invest slightly more in budget and computational milliseconds, but you maximize human capital satisfaction and retention.
+
+Here is a general assessment of the two approaches : 
+
+| Approach | Pros | Cons |
+|---|---|---|
+| Greedy Heuristic (Baseline) | Quick to implement<br>Extremely fast execution time ($O(N)$ complexity)<br><br>No specialized solver licensing required.<br><br>Business: Intuitive and easy to explain to non-technical stakeholders. | Brittle architecture (adding new business rules often leads to nested, unmaintainable "spaghetti" code)<br><br>Trapped in local optima, sacrificing global ROI<br>Fails to guarantee complex constraints |
+| MILP Optimization (Gurobi) | Mathematically guarantees the global optimum<br><br>Highly flexible (new constraints are simply added as mathematical equations)<br><br>Maximizes ROI and overall satisfaction<br><br>Enables advanced scenario analysis (e.g., Pareto frontiers for budget elasticity). | Computationally intensive for massive datasets (NP-Hard)<br><br>Requires specialized Operations Research (OR) expertise to formulate.<br><br>Enterprise-grade solvers (like Gurobi) involve high commercial licensing costs but free alternatives exist with less performance |
+
+
+
+# 5.Code architecture 
 
 Global ArchitectureThe pipeline is entirely orchestrated by the launch_process() function, ensuring a clean flow from data ingestion to evaluation and visualization.get_input_data: Ingests data from either local CSV files or directly from Google Sheets via API (managing individuals' votes/seniority and projects' capacities/costs).perform_sanity_checks: A robust validation layer ensuring data integrity (e.g., verifying unique IDs, checking that maximum capacity $\ge$ minimum capacity, and ensuring no missing cross-references).Algorithmic Engines:greedy_allocation: Runs the baseline heuristic.create_model: Formulates and runs the MILP optimization model.post_process_solution: Merges the algorithmic outputs with the initial data to generate human-readable allocations and calculates business KPIs (satisfaction scores, budget utilization, allocation rates).display_allocation_results_graph & display_kpi_compraison: Generates interactive Plotly visualizations (slope graphs and comparative bar charts) to help stakeholders understand the trade-offs.
 
