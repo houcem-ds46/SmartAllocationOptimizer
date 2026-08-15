@@ -1,6 +1,16 @@
-# 1. Introduction to business problem 
+# 1. The business problem :  The Friday Afternoon Headach
 
-This project provides an intelligent decision-support system to allocate individuals to projects based on their preferences, their seniority, and strict business constraints (budget and project capacity). It features two distinct algorithmic approaches to solve the allocation problem: a fast heuristic (Greedy Algorithm) and an exact mathematical solver (Mixed-Integer Linear Programming via Gurobi).
+You are an Operations Manager. It’s Friday afternoon, and the quarterly project kick-off is on Monday. You have dozens of employees to assign to a list of new R&D projects.
+
+Everyone has submitted their top choices. The senior experts expect their preferences to be honored. Meanwhile, Finance has handed you a strict budget to spend for future R&D projects, and every project has minimum and maximum headcount limits. If you try to solve this in a spreadsheet, you will spend your entire weekend dragging rows, breaking capacity constraints, and ultimately leaving half the team frustrated.
+
+Instead, you export the team's votes to a CSV and run a single Python script.
+
+In a fraction of a second, you get a perfect allocation plan, a budget impact report, and a dashboard ready for Monday's meeting. This repository provides that exact decision-support system. To prove its value, it compares two distinct algorithmic engines:
+
+- The Greedy Algorithm (The Human Way): A fast, common-sense heuristic that mimics a human planner doing their best to serve senior experts first and then fill the remaining gaps.
+
+- The MILP Optimizer (The AI augmented way with Gurobi Solver): A heavy-duty mathematical solver that analyzes millions of combinations globally to guarantee the absolute best ROI, maximizing team satisfaction without breaking a single business rule.
 
 
 # 2. The Greedy Algorithm (Baseline)
