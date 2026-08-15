@@ -305,7 +305,7 @@ Here is a general assessment of the two approaches :
 
 # 5.Code architecture 
 
-Global ArchitectureThe pipeline is entirely orchestrated by the launch_process() function, ensuring a clean flow from data ingestion to evaluation and visualization.get_input_data: Ingests data from either local CSV files or directly from Google Sheets via API (managing individuals' votes/seniority and projects' capacities/costs).perform_sanity_checks: A robust validation layer ensuring data integrity (e.g., verifying unique IDs, checking that maximum capacity $\ge$ minimum capacity, and ensuring no missing cross-references).Algorithmic Engines:greedy_allocation: Runs the baseline heuristic.create_model: Formulates and runs the MILP optimization model.post_process_solution: Merges the algorithmic outputs with the initial data to generate human-readable allocations and calculates business KPIs (satisfaction scores, budget utilization, allocation rates).display_allocation_results_graph & display_kpi_compraison: Generates interactive Plotly visualizations (slope graphs and comparative bar charts) to help stakeholders understand the trade-offs.
+Global ArchitectureThe pipeline is entirely orchestrated by the launch_process() function, ensuring a clean flow from data ingestion to evaluation and visualization.
 
 - get_input_data: Ingests data from either local CSV files or directly from Google Sheets via API (managing individuals' votes/seniority and projects' capacities/costs).
 
