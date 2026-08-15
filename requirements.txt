@@ -6,3 +6,4 @@ google_api_python_client==2.127.0
 gspread==6.1.0
 isodate
 protobuf==5.26.1
+plotly==5.15.0
