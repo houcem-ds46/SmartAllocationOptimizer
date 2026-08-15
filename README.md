@@ -1,6 +1,6 @@
 # 1. The business problem :  The friday afternoon headache
 
-You are an Operations Manager. It’s Friday afternoon, and the quarterly project kick-off is on Monday. You have dozens of employees to assign to a list of new R&D projects.
+You are an Operations Manager. It’s Friday afternoon, and the quarterly project kick-off is on Monday. You have 43 employees to assign to a list of 24 new R&D projects. You have a few hours to decide which projects to fund for next Monday's kick-off and who will be working on each one.
 
 Everyone has submitted their top choices. The senior experts expect their preferences to be honored. Meanwhile, Finance has handed you a strict budget to spend for future R&D projects, and every project has minimum and maximum headcount limits. If you try to solve this in a spreadsheet, you will spend your entire weekend dragging rows, breaking capacity constraints, and ultimately leaving half the team frustrated.
 
