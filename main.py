@@ -571,7 +571,7 @@ def display_allocation_results_graph(df_votes, df_projects, df_kpi, solution_typ
     # 7. Mise en forme finale pour l'esthétique du slope graph
     # On ajoute une marge à droite (r=250) pour avoir la place d'afficher les KPIs
     fig.update_layout(
-        title=dict(text=f'<b>Allocation des collaborateurs aux projets avec la solution {solution_type} (en vert l\'allocation au 1ier choix, en orange l\'allocation au 2ème choix, en gris les autres)</b>', font=dict(size=20), x=0.5),
+        title=dict(text=f'People assignment to projects with {solution_type} solution (in green allocation to 1st choice, in orange allocation to 2nd choice)', font=dict(size=20), x=0.5),
         xaxis=dict(showgrid=False, zeroline=False, showticklabels=False, range=[-0.5, 1.8]), # On étend un peu le range X
         yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
         plot_bgcolor='white',
@@ -643,10 +643,10 @@ def display_kpi_compraison(df_kpi):
             [{"type": "bar", "colspan": 3}, None, None]
         ],
         subplot_titles=(
-            f"Score de satisfaction<br>(Gap: {gap_pct_1:+.1f}%)", 
-            f"Coût des projets ($)<br>(Gap: {gap_pct_2:+.1f}%)", 
-            f"Durée de résolution (ms)<br>(Gap: {gap_pct_3:+.1f}%)", 
-            "Répartition des choix"
+            f"Satisfaction score <br>(Gap: {gap_pct_1:+.1f}%)", 
+            f"Projects cost ($)<br>(Gap: {gap_pct_2:+.1f}%)", 
+            f"Solve time (ms)<br>(Gap: {gap_pct_3:+.1f}%)", 
+            "Choice assignment"
         ),
         vertical_spacing=0.15 # Ajoute un peu d'espace entre la ligne 1 et la ligne 2
     )
@@ -670,7 +670,7 @@ def display_kpi_compraison(df_kpi):
     # Graphique 2 (Ligne 1, Col 2)
     fig.add_trace(
         go.Bar(
-            name='Coût (Greedy/Optim)',
+            name='Cost (Greedy/Optim)',
             x=['Greedy', 'Optim'],
             y=[val_greedy_2, val_optim_2],
             marker_color=['grey', 'lightblue'], 
@@ -684,7 +684,7 @@ def display_kpi_compraison(df_kpi):
     # Graphique 3 (Ligne 1, Col 3)
     fig.add_trace(
         go.Bar(
-            name='Durée (Greedy/Optim)',
+            name='Duration (Greedy/Optim)',
             x=['Greedy', 'Optim'],
             y=[val_greedy_3, val_optim_3],
             marker_color=['grey', 'lightblue'], 
@@ -698,7 +698,7 @@ def display_kpi_compraison(df_kpi):
     # Graphique 4 (Ligne 2, Col 1 - s'étend sur 3 colonnes) - Double barre (1er Choix)
     fig.add_trace(
         go.Bar(
-            name='Nb de collab ayant obtenu leur 1er choix',
+            name='Nb of people assigned to their 1st choice',
             x=['Greedy', 'Optim'],
             y=[val_greedy_4a, val_optim_4a],
             marker_color='#2ca02c', 
@@ -712,7 +712,7 @@ def display_kpi_compraison(df_kpi):
     # Graphique 4 (Ligne 2, Col 1) - Double barre (2ème Choix)
     fig.add_trace(
         go.Bar(
-            name='Nb de collab ayant obtenu leur 2ème choix',
+            name='Nb of people assigned to their 2nd choice',
             x=['Greedy', 'Optim'],
             y=[val_greedy_4b, val_optim_4b],
             marker_color='#ff7f0e', 
@@ -725,7 +725,7 @@ def display_kpi_compraison(df_kpi):
 
     # --- Mise en forme globale ---
     fig.update_layout(
-        title_text="<b>Comparatif des Solutions : Greedy vs Optim</b>",
+        title_text="<b>Solution comparaison : Greedy vs Optim</b>",
         title_x=0.5,
         plot_bgcolor='white',
         height=1000, 
