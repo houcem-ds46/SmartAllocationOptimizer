@@ -1,5 +1,8 @@
 # 1. The business problem :  The friday afternoon headache
 
+<img width="1024" height="559" alt="image" src="https://github.com/user-attachments/assets/7f388d30-4082-437b-b19a-c12034498070" />
+
+
 You are an Operations Manager. It’s Friday afternoon, and the quarterly project kick-off is on Monday. You have 43 employees to assign to a list of 24 new R&D projects, respecting a budget of 50 000 $. You have a few hours to decide which projects to fund for next Monday's kick-off and who will be working on each one.
 
 Everyone has submitted their top choices. The senior experts expect their preferences to be honored. Meanwhile, Finance has handed you a strict budget to spend for future R&D projects, and every project has minimum and maximum headcount limits. If you try to solve this in a spreadsheet, you will spend your entire weekend dragging rows, breaking capacity constraints, and ultimately leaving half the team frustrated.
@@ -44,6 +47,10 @@ FOR EACH opened_project:
         Find unassigned person with highest combined score (vote + seniority)
         Assign to opened_project
 ```
+
+The results based on our scenario : 
+<img width="1445" height="909" alt="image" src="https://github.com/user-attachments/assets/b4f77099-cfd2-407d-a3fd-7a51a0dc3e83" />
+
 # 3. The Mathematical Optimization model (Gurobi)
 
 ## Motivation 
@@ -277,6 +284,12 @@ Assignments are rewarded according to the satisfaction score `S[p, c]`. This cus
 
 When soft budget constraint is activated, the model can exceed the budget by up to 5%, but doing so reduces the objective value through the penalty term: Therefore, the optimizer will only use the allowed budget overrun when the additional satisfaction gained from activating projects justifies its penalty.
 
+
+Results 
+<img width="1456" height="908" alt="image" src="https://github.com/user-attachments/assets/07f3a380-1534-46a2-8b8f-c7f769aee3bb" />
+
+
+
 # 4.Comparing Approaches: Greedy vs. Optim
 
 To objectively evaluate the performance of our allocation engine, we benchmarked the baseline heuristic (Greedy algorithm) against the exact mathematical solver (MILP Optimization). Here is the detailed breakdown of the key performance indicators:
@@ -289,6 +302,12 @@ To objectively evaluate the performance of our allocation engine, we benchmarked
 | Number of people allocated to their 1st Choice | 10 | 21 | +110% |
 | Number of people allocated to their 2nd Choice | 10 | 3 | -70% (Trade-off) |
 | Weighted Satisfaction Score | 78 | 117.5 | +51% |
+
+<img width="1629" height="318" alt="image" src="https://github.com/user-attachments/assets/36fbbaac-4269-4b6d-94f2-3c91888dba83" />
+
+
+<img width="1881" height="303" alt="image" src="https://github.com/user-attachments/assets/726305e5-8129-4a31-999e-15a26d63e494" />
+
 
 
 While the Greedy approach offers a slightly faster execution time and a lower immediate budget footprint, the Optimization algorithm provides a massively superior ROI in terms of overall employee satisfaction. By taking a global view of all constraints rather than making sequential, localized decisions, the MILP solver drastically increases the number of people getting their top preferences. 
